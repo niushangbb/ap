@@ -1,0 +1,27 @@
+{
+  "name": "sirius",
+  "description": "easilydo front end code",
+  "version": "0.0.1",
+  "keywords": [
+    "js",
+    "css",
+    "responsive",
+    "front-end",
+    "framework",
+    "web"
+  ],
+  "homepage": "http://github.com/agent8.com/sirius",
+  "main": [
+    "dist/lib/index.js"
+  ],
+  "ignore": [
+    "/.*",
+    "_config.yml",
+    "CNAME",
+    "docs"
+  ],
+  "dependencies": {
+    "mocha": "~2.2.1",
+    "chai": "~2.1.2"
+  }
+}
