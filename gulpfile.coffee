@@ -6,12 +6,7 @@ runSequence = require('run-sequence')
 
 del = require('del')
 
-jsValidate = require('gulp-jsvalidate')
-jshint = require('gulp-jshint')
-
 webpack = require 'webpack'
-
-mochaPhantomJS = require('gulp-mocha-phantomjs')
 
 minimist = require('minimist')
 argv = minimist(process.argv.slice(2))
@@ -37,36 +32,26 @@ task 'clean', -> del.sync(['test-build', 'dist'])
 
 task 'copy', ->
   #src(['test/**/*.json', 'test/**/*.html', 'test/**/*.css'], {cache:'copy'}).to( 'test-build')
-  src(['src/html/**/*.*'], {cache:'copy'}).to( 'dist/html')
-  src(['src/css/**/*.css'], {cache:'copy'}).to( 'dist/css')
-  src(['src/img/**/*.*'], {cache:'copy'}).to( 'dist/img')
-  src(['src/js/purchase-3.6.js', 'src/js/jq-mini.min.js'], {cache:'copy'}).to( 'dist/js')
-  src(['src/static/js/**/*.min.js'], {cache:'copy'}).to( 'dist/static/js')
-  src(['src/static/css/*.css'], {cache:'copy'}).to( 'dist/static/css')
+#  src(['src/html/**/*.*'], {cache:'copy'}).to( 'dist/html')
+#  src(['src/css/**/*.css'], {cache:'copy'}).to( 'dist/css')
+#  src(['src/img/**/*.*'], {cache:'copy'}).to( 'dist/img')
+#  src(['src/static/js/**/*.min.js'], {cache:'copy'}).to( 'dist/static/js')
+#  src(['src/static/css/*.css'], {cache:'copy'}).to( 'dist/static/css')
 
-jsFiles = ['src/js/**/*.js', 'test/**/*.js', 'rad/js/**/*.js']
-
-task 'validjs', -> src(jsFiles).pipe(jsValidate())
-
-task 'lint', -> src(jsFiles).pipe(jshint())
-
-task 'jsok', ['validjs', 'lint']
+jsFiles = ['src/js/**/*.js', 'test/**/*.js']
 
 uglify = require('gulp-uglify')
 
 task 'uglify', ->
   src('src/js/jq-mini.js').pipe(uglify()).pipe(gulp.dest('dist/js'))
 
-makeWebpackConfig = require './webpack.config'
+{makeWebpackConfig, makeWebpackDevServer} = require './webpack.config'
 
 distOptions =
   entry:
-    cards: './src/js/entries/cards',
-    tasks: './src/js/entries/tasks',
-    doits: './src/js/entries/doits'
-  outputPath: './dist/js'
+    generic: './src/generic',
+  outputPath: './dist'
   filename: '[name]-bundle.js'
-  commons: "commons-bundle.js"
   minify: argv.env=='dist'
   pathinfo: argv.env!='dist'
   debug: argv.env!='dist'
@@ -74,33 +59,43 @@ distOptions =
 
 
 testOptions =
-  entry: './test/mocha-phantomjs-index',
+  entry: './test/mocha-index',
   outputPath: './test-build'
-  filename: 'mocha-phantomjs-index.js'
+  filename: 'mocha-index.js'
 
 webpackOptionsList = [distOptions, testOptions]
 
-task 'webpack-run', (done) ->
-  for options in webpackOptionsList
-    config = makeWebpackConfig(options)
-    webpack(config).run (err, stats) ->
-      if err then console.log('Error', err)
-      else console.log(stats.toString())
-#      done()
+webpackRun = (entry, output, options) ->
+  config = makeWebpackConfig(entry, output, options)
+  webpackCompiler = webpack(config)
+  webpackCompiler.run(->)
 
-task 'webpack-watch', (done) ->
-  for options in webpackOptionsList
-    config = makeWebpackConfig(options)
-    webpack(config).watch 100, (err, stats) ->
-      if err then console.log('Error', err)
-      else console.log(stats.toString())
-#      done()
+webpackDistribute = (mode) ->
+  plugins = [new webpack.optimize.UglifyJsPlugin({minimize: true})]
+  #plugins = [new ClosureCompilerPlugin()]
+  webpackRun('./src/genetic', 'genetic.min.js', {path:'dist', pathinfo:false, libraryTarget:'umd', library:'genetic', plugins})
+  pathinfo = mode=='dev'
+  if mode=='dev' then plugins = []
+  webpackRun('./src/genetic', 'genetic.js', {path:'dist', pathinfo:pathinfo, libraryTarget:'umd', library:'genetic', plugins})
+  webpackRun('./test/mocha/index', 'mocha-index.js', {path:'test-build', pathinfo:pathinfo, plugins})
+#  webpackRun('./demo/index', 'demo-index.js', {path:'dist', pathinfo:pathinfo, plugins})
 
-task 'watch',  ->
-  #gulp.watch ['test/**/*.css', 'test/**/*.html','test/**/*json'], ['copy']
+task 'webpack-dist', () -> webpackDistribute('dist')
+task 'webpack-dev', () -> webpackDistribute('dev')
 
-task 'build', (callback) -> runSequence 'clean', 'copy', ['webpack-run'], callback
+task 'webpack-server', ->
+  webServerPlugins = [
+    new webpack.HotModuleReplacementPlugin()
+    new webpack.NoErrorsPlugin()
+  ]
+  makeWebpackDevServer(["webpack/hot/dev-server", './src/genetic'], 'genetic.js', {port:8083, libraryTarget:'umd', library:'genetic', inline:true, plugins:webServerPlugins})
+  makeWebpackDevServer(["webpack/hot/dev-server", './test/mocha/index'], 'mocha-index.js', {port:8088, plugins:webServerPlugins})
+#  makeWebpackDevServer(["webpack/hot/dev-server", './demo/index'], 'demo-index.js', {port:8089, plugins:webServerPlugins})
 
-task 'build-watch', (callback) -> runSequence 'clean', 'copy', ['webpack-watch'], callback #'watch',
+task 'build', (callback) -> runSequence 'clean', 'copy', ['webpack-dist'], callback
 
-task 'default', ['build-watch']
+task 'dev', (callback) -> runSequence 'clean', 'copy', ['webpack-dev'], callback
+
+task 'wp-server', (callback) -> runSequence 'clean', 'copy', ['webpack-server'], callback
+
+task 'default', ['wp-server']

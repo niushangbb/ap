@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+    <base href="../">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mocha Test Runner</title>
+    <link rel="stylesheet" href="bower_components/mocha/mocha.css">
+</head>
+<body>
+
+<script src="bower_components/mocha/mocha.js"></script>
+<script src="bower_components/chai/chai.js"></script>
+
+<!--just for dc demo-->
+<div id="clear-demo" onclick="clearDemo()"> clear demo</div>
+<div id="clear-log" onclick="clearLog()"> clear log</div>
+<div id="debug-log"></div>
+
+<div id="mocha"></div>
+<div id="edo-demo" class="dc-demo"></div>
+<script>mocha.setup('bdd')</script>
+
+<script src="test-build/mocha-index.js"></script>
+
+<script>
+    var elm = document.getElementById('edo-demo');
+    if (window.mochaPhantomJS) {
+        mochaPhantomJS.run();
+    } else {
+        mocha.run();
+    }
+    function clearLog() {
+        document.getElementById('debug-log').innerHTML = '';
+    }
+    function clearDemo() {
+        document.getElementById('dc-demo').innerHTML = '';
+    }
+</script>
+
+</body>
+</html>
